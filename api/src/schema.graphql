@@ -1,0 +1,52 @@
+type Tag {
+   _id: Long!
+   name: String!
+   questions: [Question] @relation(name: "TAGGED", direction: "IN")
+}
+
+type Answer {
+   _id: Long!
+   id: Int!
+   answers: [Question] @relation(name: "ANSWERS", direction: "OUT")
+   users: [User] @relation(name: "PROVIDED", direction: "IN")
+}
+
+type User {
+   _id: Long!
+   display_name: String!
+   reputation: Int
+   id: Int!
+   provided: [Answer] @relation(name: "PROVIDED", direction: "OUT")
+   asked: [Question] @relation(name: "ASKED", direction: "OUT")
+   questionCount: Int @cypher(statement:"RETURN size((this)-[:ASKED]->()) as questionCount")
+}
+
+type Question {
+   _id: Long!
+   favorite_count: Int!
+   id: Int!
+   share_link: String!
+   title: String!
+   created: DateTime
+   tagged: [Tag] @relation(name: "TAGGED", direction: "OUT")
+   answers: [Answer] @relation(name: "ANSWERS", direction: "IN")
+   user: User @relation(name: "ASKED", direction: "IN")
+}
+
+type RatingsCount {
+  stars: Int!
+  count: Int!
+}
+type Query {
+  userCount: Int! @cypher(statement:"MATCH (:User) RETURN count(*)")
+  ratingsCount: [RatingsCount] @cypher(statement:"""
+  MATCH (u:User)
+  WITH u.reputation / 100 * 100 as stars, count(*) as count
+  RETURN { stars: stars, count: count} as reputations
+  ORDER BY stars ASC
+  """) 
+}
+
+type Mutation {
+  upvote(id:Int!): Question @cypher(statement:"MATCH (q:Question {id:$id}) SET q.favorite_count = q.favorite_count + 1 RETURN q" )
+}
